@@ -1,0 +1,156 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.conda/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# PyCharm
+.idea/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# Data Files (CRITICAL for data science projects)
+fraud_detection/data/raw/*.csv
+fraud_detection/data/raw/*.parquet
+fraud_detection/data/raw/*.json
+fraud_detection/data/raw/*.xlsx
+fraud_detection/data/raw/*.xls
+fraud_detection/data/preprocessed/*.csv
+fraud_detection/data/preprocessed/*.parquet
+fraud_detection/data/feature_engineered/*.csv
+fraud_detection/data/feature_engineered/*.parquet
+fraud_detection/data/database/*.db
+fraud_detection/data/database/*.sqlite
+fraud_detection/data/database/*.sqlite3
+
+# Model Files
+fraud_detection/models/*.pkl
+fraud_detection/models/*.joblib
+fraud_detection/models/*.h5
+fraud_detection/models/*.pt
+fraud_detection/models/*.pth
+fraud_detection/models/*.onnx
+fraud_detection/models/*.pb
+
+# Large Files and Artifacts
+fraud_detection/artifacts/
+*.log
+fraud_detection/logs/*.log
+fraud_detection/logs/*.txt
+
+# Temporary Files
+*.tmp
+*.temp
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Configuration Files with Secrets
+.env.local
+.env.*.local
+config/secrets.json
+config/api_keys.json
+*/config/*_secrets*
+
+# Performance and Profiling
+*.prof
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+
+# Documentation Build
+docs/_build/
+site/
+
+# Backup Files
+*.bak
+*.backup
+*~
+
+# System Files
+*.swp
+*.swo
+*~
+
+# Large Datasets Patterns
+*/data/*/train_*.csv
+*/data/*/test_*.csv
+*/data/*/*.parquet
+*/data/*/*.h5
+*/data/*/*.hdf5
+
+# Experiment Tracking
+mlruns/
+.mlflow/
+wandb/
+tensorboard_logs/
+experiments/
+
+# Output Files
+results/
+outputs/
+plots/*.png
+plots/*.jpg
+plots/*.pdf
+reports/*.pdf
+reports/*.html
+
+# Cache Files
+.cache/
+*.cache
+
+# Package Management
+poetry.lock
+Pipfile.lock
+requirements-dev.txt
+
+# IDE and Editor Files
+*.sublime-project
+*.sublime-workspace
+.spyderproject
+.spyproject
+
+# OS Generated Files
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
