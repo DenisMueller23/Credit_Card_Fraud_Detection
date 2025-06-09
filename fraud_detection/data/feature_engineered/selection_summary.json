@@ -1,0 +1,17 @@
+{
+  "total_features_after_engineering": 309,
+  "final_selected_features": 309,
+  "reduction_ratio": 0.0,
+  "train_samples": 593424,
+  "test_samples": 506691,
+  "target_distribution": {},
+  "selection_timestamp": "2025-06-08T16:07:22.534034",
+  "feature_categories": {
+    "original": 236,
+    "identity": 39,
+    "amount": 21,
+    "temporal": 9,
+    "interaction": 3,
+    "anomaly": 1
+  }
+}

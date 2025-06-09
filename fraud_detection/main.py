@@ -14,7 +14,7 @@ sys.path.append(os.path.join(current_dir, 'src'))
 from preprocessing import DataCleaner, clean_credit_data
 from feature_engineering import (
     FeatureConfig, 
-    FeatureEngineeringPipeline,  # Changed from ProductionFeatureEngineeringPipeline
+    FeatureEngineeringPipeline,  
     align_datasets,
     AdvancedFeatureSelector
 )
@@ -174,6 +174,17 @@ def main():
         print(f"❌ Error during feature engineering: {str(e)}")
         logger.error(f"Feature engineering failed: {e}", exc_info=True)
         return cleaner_instances, cleaned_datasets, train_merged, test_merged, None
+    
+    # Phase 4: Save feature-selected datasets
+    print("\n💾 PHASE 4: SAVING FEATURE-SELECTED DATASETS")
+    print("-" * 40)
+    
+    # Save both regular and feature-selected datasets
+    save_final_datasets(train_engineered, test_engineered, fe_pipeline)
+    
+    # Also save feature-selected version with metadata
+    if fe_pipeline and hasattr(fe_pipeline, 'get_feature_names'):
+        save_feature_selected_datasets(train_engineered, test_engineered, fe_pipeline)
     
     # Phase 4: Final Summary
     print("\n" + "=" * 80)
@@ -361,7 +372,8 @@ def apply_feature_engineering(
         minimal_pipeline.feature_defaults_ = {}
         
         return train_aligned, test_aligned, minimal_pipeline
-def save_final_datasets(train_df: pd.DataFrame, test_df: pd.DataFrame) -> None:
+def save_final_datasets(train_df: pd.DataFrame, test_df: pd.DataFrame, 
+                       pipeline: Optional[FeatureEngineeringPipeline] = None) -> None:
     """
     Save the final engineered datasets
     """
@@ -405,27 +417,31 @@ def save_final_datasets(train_df: pd.DataFrame, test_df: pd.DataFrame) -> None:
             print(f"📏 Test file size: {test_size / (1024*1024):.2f} MB")
         else:
             print("⚠️  Warning: Files may not have been created successfully")
-            
-        if pipeline and pipeline.get_feature_selection_report():
-            selection_report = pipeline.get_feature_selection_report()
-            
-            # Save detailed feature selection report
-            report_path = os.path.join(output_dir, "feature_selection_report.json")
-            import json
-            with open(report_path, 'w') as f:
-                json.dump(selection_report, f, indent=2)
-            
-            # Save selected features only
-            selected_features_path = os.path.join(output_dir, "selected_features.txt")
-            selected_features = pipeline.get_feature_names()
-            with open(selected_features_path, 'w') as f:
-                for feature in selected_features:
-                    f.write(f"{feature}\n")
-            
-            print(f"✅ Feature selection report saved to: {report_path}")
-            print(f"✅ Selected features list saved to: {selected_features_path}")
-            print(f"🎯 Features reduced from {selection_report['original_features']} to {selection_report['final_features']}")    
-    
+        
+        # Only save pipeline info if pipeline is provided and has selection capability
+        if pipeline and hasattr(pipeline, 'get_feature_selection_report'):
+            try:
+                selection_report = pipeline.get_feature_selection_report()
+                if selection_report:  # Check if report exists and is not empty
+                    
+                    # Save detailed feature selection report
+                    report_path = os.path.join(output_dir, "feature_selection_report.json")
+                    import json
+                    with open(report_path, 'w') as f:
+                        json.dump(selection_report, f, indent=2)
+                    
+                    # Save selected features only
+                    selected_features_path = os.path.join(output_dir, "selected_features.txt")
+                    selected_features = pipeline.get_feature_names()
+                    with open(selected_features_path, 'w') as f:
+                        for feature in selected_features:
+                            f.write(f"{feature}\n")
+                    
+                    print(f"✅ Feature selection report saved to: {report_path}")
+                    print(f"✅ Selected features list saved to: {selected_features_path}")
+                    print(f"🎯 Features reduced from {selection_report['original_features']} to {selection_report['final_features']}")    
+            except Exception as e:
+                print(f"⚠️  Could not save pipeline reports: {e}")
         
     except Exception as e:
         print(f"❌ Error saving final datasets: {str(e)}")
@@ -434,6 +450,175 @@ def save_final_datasets(train_df: pd.DataFrame, test_df: pd.DataFrame) -> None:
         # Additional debugging information
         print(f"🔍 Current working directory: {os.getcwd()}")
         print(f"🔍 Script directory: {os.path.dirname(os.path.abspath(__file__))}")
+def save_feature_selected_datasets(train_df: pd.DataFrame, test_df: pd.DataFrame, 
+                                 pipeline: FeatureEngineeringPipeline) -> None:
+    """
+    Save feature-selected datasets to CSV files with comprehensive metadata.
+    """
+    # Get absolute path
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    output_dir = os.path.join(current_dir, "data", "feature_engineered")
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Define file paths
+    train_path = os.path.join(output_dir, "train_final_feature_selected.csv")
+    test_path = os.path.join(output_dir, "test_final_feature_selected.csv")
+    
+    print(f"\n💾 SAVING FEATURE-SELECTED DATASETS")
+    print(f"📁 Output directory: {output_dir}")
+    print("-" * 50)
+    
+    try:
+        # Save training data
+        print(f"📊 Saving training data: {train_df.shape}")
+        train_df.to_csv(train_path, index=False)
+        print(f"✅ Training data saved to: {train_path}")
+        
+        # Save test data  
+        print(f"📊 Saving test data: {test_df.shape}")
+        test_df.to_csv(test_path, index=False)
+        print(f"✅ Test data saved to: {test_path}")
+        
+        # Save comprehensive metadata
+        save_feature_metadata(train_df, test_df, pipeline, output_dir)
+        
+        # Verify file sizes
+        train_size = os.path.getsize(train_path) / (1024 * 1024)  # MB
+        test_size = os.path.getsize(test_path) / (1024 * 1024)   # MB
+        
+        print(f"📁 File sizes - Train: {train_size:.1f} MB, Test: {test_size:.1f} MB")
+        print(f"🎯 Total features saved: {train_df.shape[1]}")
+        
+    except Exception as e:
+        print(f"❌ Error saving datasets: {e}")
+        logger.error(f"Error saving feature-selected datasets: {e}")
+
+def save_feature_metadata(train_df: pd.DataFrame, test_df: pd.DataFrame, 
+                         pipeline: FeatureEngineeringPipeline, output_dir: str) -> None:
+    """
+    Save comprehensive feature metadata and selection information.
+    """
+    try:
+        # 1. Feature list with categories
+        feature_details = []
+        selected_features = pipeline.get_feature_names() if hasattr(pipeline, 'get_feature_names') else train_df.columns.tolist()
+        
+        for feature in selected_features:
+            if feature == 'isFraud':  # Skip target column
+                continue
+                
+            feature_info = {
+                'feature_name': feature,
+                'data_type': str(train_df[feature].dtype),
+                'category': get_feature_category(feature),
+                'missing_rate_train': train_df[feature].isnull().mean(),
+                'missing_rate_test': test_df[feature].isnull().mean() if feature in test_df.columns else 1.0,
+                'unique_values_train': train_df[feature].nunique(),
+                'unique_values_test': test_df[feature].nunique() if feature in test_df.columns else 0,
+                'min_value': train_df[feature].min() if pd.api.types.is_numeric_dtype(train_df[feature]) else None,
+                'max_value': train_df[feature].max() if pd.api.types.is_numeric_dtype(train_df[feature]) else None,
+                'mean_value': train_df[feature].mean() if pd.api.types.is_numeric_dtype(train_df[feature]) else None
+            }
+            feature_details.append(feature_info)
+        
+        # Save feature metadata to CSV
+        feature_df = pd.DataFrame(feature_details)
+        feature_metadata_path = os.path.join(output_dir, "feature_metadata.csv")
+        feature_df.to_csv(feature_metadata_path, index=False)
+        print(f"✅ Feature metadata saved to: {feature_metadata_path}")
+        
+        # 2. Feature selection summary
+        selection_summary = {
+            'total_features_after_engineering': len(train_df.columns) - (1 if 'isFraud' in train_df.columns else 0),
+            'final_selected_features': len(selected_features) - (1 if 'isFraud' in selected_features else 0),
+            'reduction_ratio': 1 - (len(selected_features) / len(train_df.columns)) if len(train_df.columns) > 0 else 0,
+            'train_samples': len(train_df),
+            'test_samples': len(test_df),
+            'target_distribution': train_df['isFraud'].value_counts().to_dict() if 'isFraud' in train_df.columns else {},
+            'selection_timestamp': pd.Timestamp.now().isoformat()
+        }
+        
+        # Add feature category counts
+        category_counts = feature_df['category'].value_counts().to_dict()
+        selection_summary['feature_categories'] = category_counts
+        
+        # Save selection summary
+        import json
+        summary_path = os.path.join(output_dir, "selection_summary.json")
+        with open(summary_path, 'w') as f:
+            json.dump(selection_summary, f, indent=2, default=str)
+        print(f"✅ Selection summary saved to: {summary_path}")
+        
+        # 3. Feature importance (if available)
+        if hasattr(pipeline, 'feature_selector') and pipeline.feature_selector:
+            if hasattr(pipeline.feature_selector, 'feature_importances_'):
+                importance_data = []
+                for feature, importance in pipeline.feature_selector.feature_importances_.items():
+                    importance_data.append({
+                        'feature_name': feature,
+                        'importance_score': importance,
+                        'category': get_feature_category(feature)
+                    })
+                
+                importance_df = pd.DataFrame(importance_data).sort_values('importance_score', ascending=False)
+                importance_path = os.path.join(output_dir, "feature_importance.csv")
+                importance_df.to_csv(importance_path, index=False)
+                print(f"✅ Feature importance saved to: {importance_path}")
+        
+        # 4. Column mapping (original to final)
+        column_mapping = {
+            'original_columns': list(train_df.columns),
+            'selected_features': selected_features,
+            'engineered_features': [f for f in selected_features if get_feature_category(f) != 'original'],
+            'original_features': [f for f in selected_features if get_feature_category(f) == 'original']
+        };
+        
+        mapping_path = os.path.join(output_dir, "column_mapping.json")
+        with open(mapping_path, 'w') as f:
+            json.dump(column_mapping, f, indent=2)
+        print(f"✅ Column mapping saved to: {mapping_path}")
+        
+    except Exception as e:
+        print(f"⚠️  Warning: Could not save all metadata: {e}")
+        logger.warning(f"Error saving feature metadata: {e}")
+
+def get_feature_category(feature_name: str) -> str:
+    """
+    Categorize features based on naming patterns.
+    """
+    feature_lower = feature_name.lower()
+    
+    # Temporal features
+    if any(pattern in feature_lower for pattern in ['velocity', 'time', 'hour', 'day', 'weekend', 'night', 'business', 'cyclical', 'sin', 'cos']):
+        return 'temporal'
+    
+    # Amount features  
+    elif any(pattern in feature_lower for pattern in ['amt', 'amount', 'transactionamt', 'decimal', 'round', 'log', 'sqrt', 'cbrt']):
+        return 'amount'
+    
+    # Anomaly features
+    elif any(pattern in feature_lower for pattern in ['anomaly', 'outlier', 'zscore', 'extreme', 'isolation']):
+        return 'anomaly'
+    
+    # Frequency features
+    elif any(pattern in feature_lower for pattern in ['frequency', 'fraud_rate', '_count', 'smooth']):
+        return 'frequency'
+    
+    # Interaction features
+    elif any(pattern in feature_lower for pattern in ['interaction', 'combo', '_x_']):
+        return 'interaction'
+    
+    # Card/Identity features
+    elif any(pattern in feature_lower for pattern in ['card', 'addr', 'email', 'device', 'id']):
+        return 'identity'
+    
+    # Statistical features
+    elif any(pattern in feature_lower for pattern in ['mean', 'std', 'median', 'min', 'max', 'percentile', 'rank']):
+        return 'statistical'
+    
+    # Original features (likely from raw data)
+    else:
+        return 'original'
 
 def load_engineered_datasets() -> Tuple[Optional[pd.DataFrame], Optional[pd.DataFrame], Optional[FeatureEngineeringPipeline]]:
     """
@@ -442,7 +627,7 @@ def load_engineered_datasets() -> Tuple[Optional[pd.DataFrame], Optional[pd.Data
     try:
         train_path = "data/feature_engineered/train_final_engineered.csv"
         test_path = "data/feature_engineered/test_final_engineered.csv"
-        pipeline_path = "models/feature_engineering_pipeline.pkl"
+        pipeline_path = "models/feature_engineering_pipeline.pkl";
         
         # Load datasets
         train_df = pd.read_csv(train_path)
@@ -506,6 +691,62 @@ def debug_pipeline_status(train_engineered, test_engineered, fe_pipeline):
         if hasattr(fe_pipeline, 'expected_features_'):
             print(f"Expected features count: {len(fe_pipeline.expected_features_)}")
 
-# Add this at the end if you want to run the main function
+# Remove the circular import code at the bottom and replace with:
+
+def run_complete_pipeline():
+    """
+    Run the complete pipeline and save datasets for modeling.
+    """
+    print("🚀 Starting complete fraud detection pipeline...")
+    
+    # Run main pipeline
+    results = main()
+    
+    if results[2] is not None and results[3] is not None:  # train_engineered, test_engineered
+        train_engineered, test_engineered, fe_pipeline = results[2], results[3], results[4]
+        
+        # Save feature-selected datasets
+        save_feature_selected_datasets(train_engineered, test_engineered, fe_pipeline)
+        print("✅ Pipeline completed successfully!")
+        
+        return train_engineered, test_engineered, fe_pipeline
+    else:
+        print("❌ Pipeline failed - no datasets to save")
+        return None, None, None
+
+def quick_load_for_modeling() -> Tuple[pd.DataFrame, pd.DataFrame, pd.Series, Optional[Dict]]:
+    """
+    Quick loader for modeling (fixes the original function).
+    """
+    train_df, test_df, metadata = load_feature_selected_datasets()
+    
+    if train_df is None or test_df is None:
+        print("⚠️  Feature-selected datasets not found. Running pipeline first...")
+        train_df, test_df, fe_pipeline = run_complete_pipeline()
+        
+        if train_df is None:
+            raise FileNotFoundError("Pipeline failed to generate datasets")
+    
+    # Separate features and target
+    if 'isFraud' in train_df.columns:
+        X_train = train_df.drop('isFraud', axis=1)
+        y_train = train_df['isFraud']
+    else:
+        raise ValueError("Target column 'isFraud' not found in training data")
+    
+    X_test = test_df
+    
+    print(f"📊 Ready for modeling:")
+    print(f"   • X_train: {X_train.shape}")
+    print(f"   • X_test: {X_test.shape}")
+    print(f"   • y_train: {y_train.shape} (fraud rate: {y_train.mean():.3%})")
+    
+    return X_train, X_test, y_train, metadata
+
+# Only run main when script is executed directly
 if __name__ == "__main__":
-    main()
+    # Option 1: Run complete pipeline
+    run_complete_pipeline()
+    
+    # Option 2: Or just run main() if you prefer
+    # main()

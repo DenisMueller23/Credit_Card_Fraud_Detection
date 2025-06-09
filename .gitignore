@@ -154,3 +154,25 @@ requirements-dev.txt
 .directory
 .Trash-*
 .nfs*
+# Large data files
+data/feature_engineered/*.csv
+data/preprocessed/*.csv
+data/raw/*.csv
+!data/feature_engineered/feature_metadata.csv
+!data/feature_engineered/selection_summary.json
+!data/feature_engineered/feature_importance.csv
+!data/feature_engineered/column_mapping.json
+!data/feature_engineered/feature_list.txt
+!data/feature_engineered/selected_features.txt
+
+# Model files
+models/*.pkl
+models/*.joblib
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
